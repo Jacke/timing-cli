@@ -3,9 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/olekukonko/tablewriter"
 	"github.com/tidwall/pretty"
 )
 
@@ -35,10 +38,19 @@ func getProjects() (*resty.Response, error) {
 		fmt.Println(errResp)
 		return resp, errResp
 	}
-	// fmt.Println("  Body       :\n", string(pretty.Pretty(resp.Body()))[:])
-	for i, s := range getAllProjectsReponse.Data {
-		fmt.Println(strconv.Itoa(i+1)+". Project: ", s.Title)
+
+	var data = [][]string{}
+	for _, s := range getAllProjectsReponse.Data {
+		toAdd := []string{s.Self, s.Title, strconv.Itoa(s.ProductivityScore)}
+		data = append(data, toAdd)
 	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "Title", "Productivity"})
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
 	return resp, err
 }
 
@@ -137,7 +149,7 @@ func stopTimer() (*resty.Response, error) {
 	return resp, err
 }
 
-func getTimers() (*resty.Response, error) {
+func getTimers(arguments GetTimersArguments) (*AllTimersResponse, error) {
 	// Return a list of time entries.
 	// start_date_min	optional	Restricts the query to time entries whose start date is equal to or later than this parameter.
 	// start_date_max	optional	Restricts the query to time entries whose start date is equal to or earlier than this parameter.
@@ -149,12 +161,31 @@ func getTimers() (*resty.Response, error) {
 	// include_team_members	optional	If true, the response will also contain time entries that belong to other team members, provided the current user has permission to view them.
 	// team_members[]	optional	Restricts the query to data associated with the given user. Can be repeated to include time entries from several users.
 	timingClient := getClient()
-	resp, err := timingClient.client.R().
+	queryArguments := make(map[string]string)
+
+	if (arguments.IsRunning != nil && *arguments.IsRunning) {
+		queryArguments["is_running"] = strconv.FormatBool(*arguments.IsRunning)
+	}
+	queryParams := timingClient.client.R().
 		EnableTrace().
 		SetHeader("Authorization", "Bearer "+timingClient.api_key).
+		SetQueryParams(queryArguments)
+
+	resp, err := queryParams.
 		Get("https://web.timingapp.com/api/v1/time-entries")
+
+	jsonResponse := pretty.Pretty(resp.Body()) //string(_)[:]
+	allTimersResponse := AllTimersResponse{}
+	errResp := json.Unmarshal(jsonResponse, &allTimersResponse)
+	if err != nil {
+		fmt.Println(errResp)
+		return nil, errResp
+	}
 	fmt.Println("  Body       :\n", string(pretty.Pretty(resp.Body()))[:])
-	return resp, err
+	for i, s := range allTimersResponse.Data {
+		fmt.Println(strconv.Itoa(i+1)+". Timer: ", s.Title, "Is running", s.IsRunning, "Start & End time", s.StartDate, s.EndDate, s.Duration, time.Duration(s.Duration).Minutes())
+	}
+	return &allTimersResponse, err
 }
 
 func createTimeEntry() (*resty.Response, error) {
