@@ -64,12 +64,29 @@ to quickly create a Cobra application.`,
 	},
 }
 
+var Project string
+var Title string
+
 var startTimerCmd = &cobra.Command{
 	Use:   "start",
 	Short: "A brief description of your command",
 	Long:  `....`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
+		fmt.Println(args)
+		fmt.Println(Project)
+		fmt.Println(Title)
+		title, project := &Title, &Project
+		arguments := StartTimerArguments{}
+		arguments.Title = title
+		arguments.Project = project
+
+		resp, err := startTimer(arguments)
+		if (err != nil) {
+			fmt.Println(err)
+			os.Exit(1)
+		} else { 
+			fmt.Println(resp)
+		}
 	},
 }
 
@@ -78,7 +95,8 @@ var stopTimerCmd = &cobra.Command{
 	Short: "A brief description of your command",
 	Long:  `....`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
+		resp, err := stopTimer()
+		fmt.Println(resp, err)
 	},
 }
 
@@ -112,6 +130,9 @@ var statusTimerCmd = &cobra.Command{
 }
 
 func init() {
+	startTimerCmd.Flags().StringVarP(&Project, "project", "p", "", "Project ID")
+	startTimerCmd.Flags().StringVarP(&Title, "title", "t", "", "Title of timer")
+
 	timersCmd.AddCommand(startTimerCmd)
 	timersCmd.AddCommand(stopTimerCmd)
 	timersCmd.AddCommand(statusTimerCmd)

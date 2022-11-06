@@ -22,3 +22,17 @@ type GetTimersArguments struct {
 		IncludeProjectData *bool
 		IncludeTeamMembers *bool
 	}
+
+type StartTimerArguments struct {
+	//	The title and project fields can not both be empty.
+	// start_date	date	required	The time entry's start date and time.
+	StartDate *time.Time
+	// end_date	date	required	The time entry's end date and time.
+	EndDate   *time.Time
+	// project	project	optional	The project this time entry is associated with. Can be a project reference in the form "/projects/1", a project title (e.g. "Project at root level"), or an array with the project's entire title chain (e.g. ["Project at root level", "Unproductive child project"]).
+	Project *string
+	// title	string	optional	The time entry's title.
+	Title *string
+	// notes	string	optional	The time entry's notes.
+	Notes *string
+}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"errors"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/olekukonko/tablewriter"
@@ -122,20 +123,43 @@ func deleteProject(id int) (*resty.Response, error) {
 	fmt.Println("  Body       :\n", string(pretty.Pretty(resp.Body()))[:])
 	return resp, err
 }
-
-func startTimer() (*resty.Response, error) {
-	// Start a new timer.
-	// start_date	date	optional	The date this timer should have started at. Defaults to "now". Example:
-	// project	project	optional	The project this timer is associated with. Can be a project reference in the form "/projects/1", a project title (e.g. "Project at root level"), or an array with the project's entire title chain (e.g. ["Project at root level", "Unproductive child project"]).
-	// title	string	optional	The timer's title.
-	// notes	string	optional	The timer's notes.
+// Start a new timer.
+func startTimer(arguments StartTimerArguments) (*resty.Response, error) {
 	timingClient := getClient()
-	resp, err := timingClient.client.R().
-		EnableTrace().
-		SetHeader("Authorization", "Bearer "+timingClient.api_key).
+
+	queryArguments := make(map[string]string)
+	//	The title and project fields can not both be empty.
+	if (arguments.Title != nil) {
+		queryArguments["title"] = *arguments.Title
+	}
+	if (arguments.Title != nil) {
+		queryArguments["title"] = *arguments.Title
+	}
+	if (arguments.StartDate != nil) {
+		StartDate := *arguments.StartDate
+		queryArguments["start_date"] = StartDate.Format(time.RFC1123)
+	}
+	if (arguments.EndDate != nil) {
+		EndDate := *arguments.EndDate
+		queryArguments["end_date"] = EndDate.Format(time.RFC1123)
+	}
+	if (arguments.Notes != nil) {
+		queryArguments["notes"] = *arguments.Notes
+	}
+
+	if (arguments.Title != nil || arguments.Project != nil) {
+		requestParams := timingClient.client.R().
+			EnableTrace().
+			SetHeader("Authorization", "Bearer "+timingClient.api_key).
+			SetQueryParams(queryArguments)
+
+		resp, err := requestParams.
 		Post("https://web.timingapp.com/api/v1/time-entries/start")
-	fmt.Println("  Body       :\n", string(pretty.Pretty(resp.Body()))[:])
-	return resp, err
+		fmt.Println("  Body       :\n", string(pretty.Pretty(resp.Body()))[:])
+		return resp, err
+	} else {
+		return nil, errors.New("Title or Project is empty!")
+	}
 }
 
 func stopTimer() (*resty.Response, error) {
@@ -188,13 +212,8 @@ func getTimers(arguments GetTimersArguments) (*AllTimersResponse, error) {
 	return &allTimersResponse, err
 }
 
+// Create a new time entry.
 func createTimeEntry() (*resty.Response, error) {
-	// Create a new time entry.
-	// start_date	date	required	The time entry's start date and time.
-	// end_date	date	required	The time entry's end date and time.
-	// project	project	optional	The project this time entry is associated with. Can be a project reference in the form "/projects/1", a project title (e.g. "Project at root level"), or an array with the project's entire title chain (e.g. ["Project at root level", "Unproductive child project"]).
-	// title	string	optional	The time entry's title.
-	// notes	string	optional	The time entry's notes.
 	timingClient := getClient()
 	resp, err := timingClient.client.R().
 		EnableTrace().
